@@ -1,0 +1,14 @@
+
+#run dtn-node
+# - The node core container uses the 'host'. This is to avoid complexity in implementing the mechanism of 'discovering' nodes. 
+# 	The library dtn7-go comes with its own automatic 'discovery' of nodes mechanism, using a multicast network. //To see the address search for file 0doc.go
+
+# 	Implementing a mechanism of 'discovery' (as may real-life DTN nodes would work) may take some time, 
+#	and currently, the tight schedule isn't enabling that to the prototype.
+
+docker run --name node1 --network=host -e NODE_ID='node-1' -e NODE_LOCAL_IP='localhost:8080' -e NODE_ENDPOINT=':4556' -t dtn-base:1.0.0 
+
+
+#run dtn-agent-server
+
+docker run --name node1-agent --network=host -e NODE_ID='node-1' -e NODE_LOCAL_IP='127.0.0.1:8080' -e NODE_ENDPOINT=':4556' -t dtn-agent:1.0.0 

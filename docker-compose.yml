@@ -1,0 +1,23 @@
+version: "3.9"
+services:
+  dtn-base:
+    image: dtn-base:1.0.0
+    network_mode: "host"
+    container_name: "${NODE_ID}-core"
+    environment:
+      - name=value
+      - NODE_ID
+      - NODE_LOCAL_IP
+      - NODE_ENDPOINT
+  dtn-agent:
+    image: dtn-agent:1.0.0
+    network_mode: "host"
+    ontainer_name: "${NODE_ID}-agent"
+    environment:
+      - NODE_ID
+      - NODE_LOCAL_IP
+      - NODE_ENDPOINT
+    depends_on:
+      - dtn-base
+    # Add any necessary configuration here
+
