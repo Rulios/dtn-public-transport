@@ -1,4 +1,8 @@
 
+#run docker-compose (instance of node)
+
+NODE_ID='node-1' NODE_LOCAL_IP='localhost:8080' NODE_ENDPOINT=':4556' docker compose up
+
 #run dtn-node
 # - The node core container uses the 'host'. This is to avoid complexity in implementing the mechanism of 'discovering' nodes. 
 # 	The library dtn7-go comes with its own automatic 'discovery' of nodes mechanism, using a multicast network. //To see the address search for file 0doc.go
@@ -8,6 +12,8 @@
 
 docker run --name node1 --network=host -e NODE_ID='node-1' -e NODE_LOCAL_IP='localhost:8080' -e NODE_ENDPOINT=':4556' -t dtn-base:1.0.0 
 
+#run dtn-node (node 2 for develop purposes)
+docker run --name node2 --network=host -e NODE_ID='node-2' -e NODE_LOCAL_IP='localhost:8081' -e NODE_ENDPOINT=':4557' -t dtn-base:1.0.0 
 
 #run dtn-agent-server
 

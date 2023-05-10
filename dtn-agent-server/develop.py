@@ -4,19 +4,20 @@ import requests
 from time import sleep
 import json
 import os
+import base64
 
 
 # SOURCE_NODE = "dtn://" + os.environ["NODE_ID"] + "/"
 # REST_API_URL = "http://" + os.environ["NODE_LOCAL_IP"] + "/rest"
 
 # please uncommen this 2 lines when deploying
-SOURCE_NODE = os.getenv("dtn://" + "NODE_ID" + "/", "dtn://node-1/")
-REST_API_URL = os.getenv("NODE_LOCAL_IP" + "/rest",
-                         "http://localhost:8080/rest")
+# SOURCE_NODE = os.getenv("NODE_ID", "dtn://node-1/")
+# REST_API_URL = os.getenv("NODE_LOCAL_IP" + "/rest",
+#                         "http://localhost:8080/rest")
 
 
-# SOURCE_NODE = "dtn://node-2/"
-# REST_API_URL = "http://localhost:8081/rest"
+SOURCE_NODE = "dtn://node-2/"
+REST_API_URL = "http://localhost:8081/rest"
 
 
 def buildNodeURL(nodeName):
@@ -48,6 +49,12 @@ def unregister(uuid):
     except Exception as e:
         print("Error unregistering agent from node")
         print(e)
+
+
+# iterates through all the payloadBlocks and decodes the base64
+# value in the "data" key, returning the original string sent
+def returnDataFromPayload(payloadBlocks):
+    return [base64.b64decode(block["data"]) for block in payloadBlocks]
 
 
 def fetch(uuid):
@@ -123,9 +130,18 @@ try:
                 )
 
             case "2":
-                print("Here are the bundles fetched:")
-                print(fetch(uuid))
 
+                bundles = fetch(uuid)
+
+                if (len(bundles) > 0):
+                    print("Here are the bundles fetched:")
+                    canonicalBlocks = bundles[0]["canonicalBlocks"]
+                    payloadBlocks = [d for d in canonicalBlocks if d.get(
+                        "blockType") == "Payload Block"]
+
+                    print(returnDataFromPayload(payloadBlocks))
+                else:
+                    print("NO bundles received")
         input()
         os.system("clear")
 
