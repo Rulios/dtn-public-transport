@@ -1,18 +1,21 @@
-# from flask import Flask
-# import requests
+from flask import Flask
 import requests
 from time import sleep
 import json
 import os
+import base64
 
 
 # SOURCE_NODE = "dtn://" + os.environ["NODE_ID"] + "/"
 # REST_API_URL = "http://" + os.environ["NODE_LOCAL_IP"] + "/rest"
 
 # please uncommen this 2 lines when deploying
-SOURCE_NODE = os.getenv("dtn://" + "NODE_ID" + "/", "dtn://node-1/")
-REST_API_URL = os.getenv("NODE_LOCAL_IP" + "/rest",
-                         "http://localhost:8080/rest")
+NODE_ID = os.getenv("NODE_ID", "dtn://node-1/")
+NODE_LOCAL_IP = os.getenv("NODE_LOCAL_IP",
+                          "http://localhost:8080")
+
+SOURCE_NODE = "dtn://" + NODE_ID + "/"
+REST_API_URL = "http://" + NODE_LOCAL_IP + "/rest"
 
 
 # SOURCE_NODE = "dtn://node-2/"
@@ -50,6 +53,16 @@ def unregister(uuid):
         print(e)
 
 
+# iterates through all the payloadBlocks and decodes the base64
+# value in the "data" key, returning the original string sent
+def returnDataFromPayload(payloadBlocks):
+    return [base64.b64decode(block["data"]) for block in payloadBlocks]
+
+
+def decodeByteToString(bundles):
+    return [data.decode("unicode_escape") for data in bundles]
+
+
 def fetch(uuid):
     data = {"uuid": uuid}
     url = REST_API_URL + "/fetch"  # dtn local server binded to
@@ -57,11 +70,28 @@ def fetch(uuid):
     try:
 
         res = requests.post(url, json=data)
+        print(res.text)
         return json.loads(res.text)["bundles"]
 
     except Exception as e:
         print("Error fetching bundles from node")
         print(e)
+
+
+def unpackBundles(bundles):
+    # canonicalBlocks = bundles[0]["canonicalBlocks"]
+    canonicalBlocks = []
+
+    for bundle in bundles:
+        for canonicalBlock in bundle["canonicalBlocks"]:
+            canonicalBlocks.append(canonicalBlock)
+
+    payloadBlocks = [d for d in canonicalBlocks if d.get(
+        "blockType") == "Payload Block"]
+
+    dataInBase64 = returnDataFromPayload(payloadBlocks)
+
+    return decodeByteToString(dataInBase64)
 
 
 def createPackage(uuid, destination, dataText):
@@ -98,10 +128,11 @@ try:
     uuid = register()
 
     while True:
-
+        print("This is an app agent for: " + SOURCE_NODE)
         print("Press number")
         print("1    - Send bundle")
         print("2    - Fetch bundle")
+        print("3    - Send 10 bundles")
 
         option = input()
 
@@ -123,9 +154,33 @@ try:
                 )
 
             case "2":
-                print("Here are the bundles fetched:")
-                print(fetch(uuid))
 
+                bundles = fetch(uuid)
+
+                if (len(bundles) > 0):
+                    print("Here are the bundles fetched:")
+                    print("Total bundles: " + str(len(bundles)))
+                    print(unpackBundles(bundles))
+                    # print(type(unpackBundles(bundles)[0]))
+                else:
+                    print("NO bundles received")
+
+            case "3":
+                # send 10 bundles to the target node
+
+                print("Enter target node name: ")
+                targetNode = input()
+
+                for i in range(10):
+                    print("sending bundle #" + str(i))
+                    createPackage(
+                        uuid=uuid,
+                        destination=targetNode,
+                        dataText='bundle #' + str(i)
+                    )
+                    sleep(1)
+
+                print("ALL BUNDLES SENT, check the other node")
         input()
         os.system("clear")
 
@@ -133,3 +188,16 @@ except KeyboardInterrupt:
 
     print("Node stopped")
     unregister(uuid)
+
+
+# NODE API SERVER TO BE COMMANDED BY MASTER SERVER
+""" app = Flask(__name__)
+
+
+@app.route('/hello/', methods=['GET', 'POST'])
+def welcome():
+    return "Hello World!"
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=105) """

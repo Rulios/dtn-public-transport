@@ -1,7 +1,7 @@
 
 #run docker-compose (instance of node)
 
-NODE_ID='node-1' NODE_LOCAL_IP='localhost:8080' NODE_ENDPOINT=':4556' docker compose up
+NODE_ID='node-1' NODE_LOCAL_IP='localhost:8080' NODE_ENDPOINT=':4556' docker compose up -d
 
 #run dtn-node
 # - The node core container uses the 'host'. This is to avoid complexity in implementing the mechanism of 'discovering' nodes. 
@@ -15,6 +15,18 @@ docker run --name node1 --network=host -e NODE_ID='node-1' -e NODE_LOCAL_IP='loc
 #run dtn-node (node 2 for develop purposes)
 docker run --name node2 --network=host -e NODE_ID='node-2' -e NODE_LOCAL_IP='localhost:8081' -e NODE_ENDPOINT=':4557' -t dtn-base:1.0.0 
 
+#run dtn-node (node 3 for develop purposes)
+docker run --name node3 --network=host -e NODE_ID='node-3' -e NODE_LOCAL_IP='localhost:8082' -e NODE_ENDPOINT=':4558' -t dtn-base:1.0.0 
+
+
+
+
 #run dtn-agent-server
 
 docker run --name node1-agent --network=host -e NODE_ID='node-1' -e NODE_LOCAL_IP='127.0.0.1:8080' -e NODE_ENDPOINT=':4556' -t dtn-agent:1.0.0 
+
+#run dtn-agent-server for node2
+docker run --name node2-agent --network=host -e NODE_ID='node-2' -e NODE_LOCAL_IP='localhost:8081' -e NODE_ENDPOINT=':4557' -t dtn-agent:1.0.0 
+
+#run dtn-agent-server for node3
+docker run --name node3-agent --network=host -e NODE_ID='node-3' -e NODE_LOCAL_IP='localhost:8082' -e NODE_ENDPOINT=':4558' -t dtn-agent:1.0.0 
