@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: multicast-policy
+spec:
+  podSelector: {}
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector: {}
+        - podSelector:
+            matchExpressions:
+              - {
+                  key: net.beta.kubernetes.io/network-policy-allow-mc,
+                  operator: In,
+                  values: ["true"],
+                }
+        - namespaceSelector:
+            matchExpressions:
+              - {
+                  key: net.beta.kubernetes.io/network-policy-allow-mc,
+                  operator: In,
+                  values: ["true"],
+                }
+  egress:
+    - to:
+        - podSelector: {}
+        - namespaceSelector: {}
+        - podSelector:
+            matchExpressions:
+              - {
+                  key: net.beta.kubernetes.io/network-policy-allow-mc,
+                  operator: In,
+                  values: ["true"],
+                }
+        - namespaceSelector:
+            matchExpressions:
+              - {
+                  key: net.beta.kubernetes.io/network-policy-allow-mc,
+                  operator: In,
+                  values: ["true"],
+                }

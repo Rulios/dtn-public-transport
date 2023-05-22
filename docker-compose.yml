@@ -23,10 +23,11 @@ services:
       - NODE_ID
       - NODE_LOCAL_IP
       - NODE_ENDPOINT
-    stdin_open: true 
+      - AGENT_PORT
+      - MASTER_CLIENT_URL=http://localhost:3000
+    stdin_open: true
     tty: true
     depends_on:
       - dtn-base
-    
-    # Add any necessary configuration here
 
+    # Add any necessary configuration here

@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dtn-node
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+        net.beta.kubernetes.io/network-policy-allow-mc: "true"
+    spec:
+      hostNetwork: true
+      containers:
+        - name: dtn-node-core
+          image: dtn-base:1.0.0
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8085
+          env:
+            - name: NODE_ID
+              value: node-1
+            - name: NODE_LOCAL_IP
+              value: localhost:8085
+            - name: NODE_ENDPOINT
+              value: :4556
+        # - name: dtn-node-agent
+        #   image: image2:latest
+        #   ports:
+        #     - containerPort: 8081

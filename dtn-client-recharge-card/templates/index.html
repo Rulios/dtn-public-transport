@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <title>DTN Metrobus recharger simulation</title>
+</head>
+<body>
+    <h1 class="text-center ">
+        DTN Metrobus recharger simulation
+    </h1>
+
+    <div>
+        <canvas class="m-auto" id="simulationCanvas"></canvas>
+    </div>
+    
+    <div class="m-5 w-100 grid grid-cols-2">
+        <div >
+            <label for="amountRecharged">Cantidad recargada: </label>
+            <input type="number" name="amount" placeholder="$...">
+            <button id="rechargeBtn">RECARGAR</button>
+            <button id="stopSimulationBtn">Parar simulación</button>
+        </div>
+    
+        <div >
+            <label for="initialNode">Nodo inicial: </label>
+            <input type="text" name="initialNode" placeholder="node-1, node-2...">
+            <button class="shadow" id="propagateBtn">PROPAGAR RECARGA</button>
+
+        
+            <h4 class="text-center mt-3">Recargas realizadas</h4>
+
+            <table id="rechargeTable" class="w-full">
+                <tr>
+                    <th>Monto ($)</th>
+                    <th>Fecha realizada</th>
+                </tr>
+            </table>
+            
+        </div>
+    </div>
+    
+
+    <!-- scripiting -->
+
+    <script>
+        // gets the canvas element
+        const canvas = document.querySelector('#simulationCanvas');
+  
+        // gets the width and height of browser viewport
+        const width = window.innerWidth * 0.7;
+        const height = window.innerHeight * 0.7;
+  
+        //   set the width and height of canvas equal to browser viewport
+        canvas.width = width ;
+        canvas.height = height ;
+  
+        //   call the getContext method to draw 2d shape
+        const ctx = canvas.getContext('2d');
+
+        let stopSimulation = false;
+
+        //stores the recharges made
+        const recharges = [];
+        let nodes = []
+
+        //
+        let lastNearbyNodes = [];
+
+        document.querySelector("#rechargeBtn").addEventListener("click", function(){
+            let amount = document.querySelector("input[name='amount']")
+            let transaction = {
+                amount: amount.value,
+                dateTime: new Date().toJSON()
+            }
+            recharges.push(transaction);
+            
+            amount.value = ""
+            addItemToTable(transaction)
+        });
+
+        document.querySelector("#stopSimulationBtn").addEventListener("click", function(){
+            stopSimulation = !stopSimulation
+        });
+
+        document.querySelector("#propagateBtn").addEventListener("click", function(){
+            let initialNode = document.querySelector("input[name='initialNode']").value;
+            
+            
+            //do api request to master dtn
+            axios({
+                method: "POST",
+                url: "/dispatch-recharges",
+                type: "application/json",
+                data: {
+                    recharges: recharges,
+                    initialNode: initialNode
+                }
+            }); 
+
+        }); 
+
+        function addItemToTable(item){
+            const table = document.querySelector("#rechargeTable")
+
+            let row = table.insertRow();
+                let amount = row.insertCell(0);
+                amount.innerHTML = item.amount;
+                let date = row.insertCell(1);
+                date.innerHTML = item.dateTime;
+        }
+
+  
+        // create Ball class
+        class Ball {
+          constructor(x, y, velx, vely, size, color, name) {
+            this.x = x; // horizontal position of the ball
+            this.y = y; // vertical position of the ball
+            this.velx = velx; // velocity x added to coordinate x when we animate our ball
+            this.vely = vely; // velocity y added to coordinate y
+            this.size = size; // size is a radius of the ball
+            this.color = color; // fill ball shape with given color
+            this.name = name; //name of the node
+          }
+  
+          // create draw func
+          drawBall() {
+            ctx.beginPath(); // start drawing
+            ctx.fillStyle = this.color; // fill ball shape with given color
+  
+            // x and y is center of the ball
+            // size is radius of the ball
+            // 0 is a start point of degree around radius of the ball
+            // 2 * Math.PI is an end point which is equivalent to 360 degree
+            ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+            ctx.fill(); // finish drawing
+
+            ctx.font = "12px Arial"
+            ctx.fillText(this.name, this.x - 20, this.y - 20)
+          }
+  
+          // create update func
+          updateBall() {
+            // if x and y position is greater than or less than
+            // browser viewport than balls turn another direction
+            if (this.x + this.size >= width || this.x - this.size <= 0) {
+              this.velx = -this.velx;
+            }
+  
+            if (this.y + this.size >= height || this.y - this.size <= 0) {
+              this.vely = -this.vely;
+            }
+  
+            // x and y velocity added to x and y coordinate
+            // everytime updateBall func is called
+            this.x += this.velx;
+            this.y += this.vely;
+          }
+        }
+  
+        //   create random number generator func
+        function random(min, max) {
+          const num = Math.floor(Math.random() * (max - min + 1)) + min;
+          return num;
+        }
+  
+        //   create some balls and store in an array
+        const balls = [];
+        
+        
+
+        function checkNearbyNodes(balls){
+            const NEARBY_LIMIT = 75; 
+            const nearbyNodes = []; //array of tuples
+
+            //computes the node proximity with other
+            for(let i = 0; i < balls.length; i ++){
+                for(let j = 0; j < balls.length; j++){
+
+                    if(j >= i && j !== i){
+                        deltaX = balls[i].x - balls[j].x;
+                        deltaY = balls[i].y - balls[j].y;
+
+                        distance = Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2))
+
+                        if(distance <= NEARBY_LIMIT)
+                            nearbyNodes.push(
+                                [
+                                    {
+                                        name: balls[i].name,
+                                        x: balls[i].x,
+                                        y: balls[i].y
+                                    }, 
+                                    {
+                                        name: balls[j].name,
+                                        x: balls[j].x,
+                                        y: balls[j].y
+                                    }, 
+                                ])
+                    }
+                }
+            }
+            return nearbyNodes;
+        }
+
+        /*
+            To prevent doing multiple requests calls to the slave nodes
+            to propagate the bundle, this function is implemented to 
+            just send the bundles from one node to the other only if the 
+            collision is new and hasn't happened before. 
+        
+        */
+        function compareCollisions(previous, current) {
+            let differences = [];
+
+            if(previous === null || previous.length === 0){
+                differences = current
+               
+            }else{
+                //check if the collision was on the previous collision set
+                current.map(([curr1, curr2], i) => {
+                    let isOnPrevious = false
+                    previous.map(([prev1, prev2]) => {
+                        if(curr1?.name === prev1?.name && curr2?.name === prev2?.name){
+                            isOnPrevious = true
+                        }
+                    })
+
+                    if(!isOnPrevious)
+                        differences.push(current[i])
+                })
+            }
+
+
+            if(differences.length > 0 ){
+                console.log(differences)
+            }
+
+            return differences;
+        }   
+
+        function drawLineInNearbyNodes(nearbyNodes, ctx){
+            ctx.strokeStyle="white";
+            nearbyNodes.forEach(element => {
+                    ctx.beginPath();
+                    ctx.moveTo(element[0].x, element[0].y);
+                    ctx.lineTo(element[1].x, element[1].y);
+                    ctx.stroke()
+                }
+            )
+        }
+       
+        //   create loop func
+        function loop() {
+
+
+            if(!stopSimulation){
+                 // cover the previous frame's drawing before the next one is drawn
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+                ctx.fillRect(0, 0, width, height);
+
+                let nearbyNodes = checkNearbyNodes(balls)
+                    
+                drawLineInNearbyNodes(nearbyNodes, ctx)
+                
+                //gets the new nearby nodes that are different from the previous ones
+                let newNearbyNodes = compareCollisions(lastNearbyNodes, nearbyNodes)
+
+
+                //compare if nearby nodes are the same as the previous ones
+                    
+                // run necessary func
+                for (let i = 0; i < balls.length; i++) {
+                    balls[i].drawBall();
+                    balls[i].updateBall();
+                }
+
+                lastNearbyNodes = [...nearbyNodes]
+            }
+
+         
+  
+          // lets calls loop func itself over and over again
+          //  and make animation smooth
+          requestAnimationFrame(loop);
+
+          
+        }
+
+        
+        axios.get("/get-nodes")
+            .then(function(response){
+                nodes = nodes.concat(response.data)
+
+                for(let i = 0; i < 7; i ++){
+                    nodes.push({name: "node" + i})
+                }
+
+                //create the balls based on the amount of nodes
+                nodes.forEach(node => {
+                    let size = 15
+  
+                    // create a new instance of Ball class
+                    // now replace static number with random number
+                    console.log(JSON.stringify(node))
+                    const ball = new Ball(
+                        random(size, width - size),
+                        random(size, height - size),
+                        random(-2, 2),
+                        random(-2, 2),
+                        size,
+                        `white`,
+                        node.name
+                    );
+
+                    balls.push(ball);
+                })
+                    
+            })
+        
+  
+        // finaly call the loop func once ot start
+        loop();
+      </script>
+
+</body>
+</html>

@@ -196,7 +196,7 @@ def createPackage(uuid, destination, dataText):
 app = Flask(__name__)
 
 
-uuid = register()
+uuid = ""
 
 
 @app.route('/hello/', methods=['GET', 'POST'])
@@ -205,6 +205,7 @@ def welcome():
 
 
 if __name__ == '__main__':
+    uuid = register()
     app.run(host='0.0.0.0', port=5000)
     app.run(debug=True)
 
