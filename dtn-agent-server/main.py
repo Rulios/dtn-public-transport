@@ -64,6 +64,24 @@ def decodeByteToString(bundles):
     return [data.decode("unicode_escape") for data in bundles]
 
 
+# once stringified, the data bundles has this structure
+# ['{object}', '{object}', ...] NOTE THE QUOTATION MARKS IN THE OBJECTS
+# So this function decodes every json string from the array and merges them into a
+# central object
+def mergeObjects(array):
+    central_object = {}
+
+    for item in array:
+        try:
+            json_data = json.loads(item)
+            if isinstance(json_data, dict):
+                central_object.update(json_data)
+        except json.JSONDecodeError:
+            print(f"Failed to decode JSON: {item}")
+
+    return central_object
+
+
 def fetch(uuid):
     data = {"uuid": uuid}
     url = REST_API_URL + "/fetch"  # dtn local server binded to
@@ -71,11 +89,18 @@ def fetch(uuid):
     try:
         res = requests.post(url, json=data)
         print(res.text)
-        return json.loads(res.text)["bundles"]
+
+        data = json.loads(res.text)["bundles"]
+
+        if len(data) == 0:
+            raise Exception("No bundles were fetched")
+
+        return data
 
     except Exception as e:
         print("Error fetching bundles from node")
         print(e)
+        return []
 
 
 def unpackBundles(bundles):
@@ -83,8 +108,12 @@ def unpackBundles(bundles):
     canonicalBlocks = []
 
     for bundle in bundles:
-        for canonicalBlock in bundle["canonicalBlocks"]:
-            canonicalBlocks.append(canonicalBlock)
+        # drop bundles with primaryBlock.bundleControlFlags contains ADMINISTRATIVE_PAYLOAD
+        # I theorize that these are bundles related to ping a node
+
+        if "ADMINISTRATIVE_PAYLOAD" not in bundle["primaryBlock"]["bundleControlFlags"]:
+            for canonicalBlock in bundle["canonicalBlocks"]:
+                canonicalBlocks.append(canonicalBlock)
 
     payloadBlocks = [
         d for d in canonicalBlocks if d.get("blockType") == "Payload Block"
@@ -92,7 +121,9 @@ def unpackBundles(bundles):
 
     dataInBase64 = returnDataFromPayload(payloadBlocks)
 
-    return decodeByteToString(dataInBase64)
+    dataInString = decodeByteToString(dataInBase64)
+
+    return mergeObjects(dataInString)
 
 
 def createPackage(uuid, destination, dataText):
@@ -109,7 +140,7 @@ def createPackage(uuid, destination, dataText):
         },
     }
 
-    print(data)
+    # print(data)
     print("")
 
     try:
@@ -123,28 +154,43 @@ def createPackage(uuid, destination, dataText):
         return False
 
 
-def retry_with_backoff(retries=5, backoff_in_seconds=1):
-    def rwb(f):
-        def wrapper(*args, **kwargs):
-            x = 0
-            while True:
-                try:
-                    return f(*args, **kwargs)
-                except:
-                    if x == retries:
-                        raise
+def fetch_with_exponential_backoff(
+    fetch_function, *args, max_retries=3, base_delay=1, max_delay=10
+):
+    retries = 0
+    delay = base_delay
 
-                    sleepTime = backoff_in_seconds * 2**x + random.uniform(0, 1)
-                    sleep(sleepTime)
-                    x += 1
+    while retries < max_retries:
+        try:
+            # Invoke the user-provided fetch function with arguments
+            data = fetch_function(*args)
 
-        return wrapper
+            # If the fetch is successful, return the data
+            return data
 
-    return rwb
+        except Exception as e:
+            print(f"Error fetching data: {str(e)}")
+
+            # Increase the number of retries
+            retries += 1
+
+            # Calculate the exponential backoff delay
+            backoff_delay = random.uniform(0, delay)
+
+            # Increase the delay for the next retry
+            delay = min(max_delay, delay * 2)
+
+            print(f"Retrying in {backoff_delay:.2f} seconds...")
+            time.sleep(backoff_delay)
+
+    raise Exception(f"Failed to fetch data after {max_retries} retries.")
 
 
 def announceToMaster():
-    nodeMetadata = {"node-name": NODE_ID, "node-agent-ip": "0.0.0.0:" + AGENT_PORT}
+    nodeMetadata = {
+        "node-name": NODE_ID,
+        "node-agent-ip": "http://localhost:" + AGENT_PORT,
+    }
 
     # queries the master server and announces the node with the agent
     requests.post(MASTER_CLIENT_URL + "/register-node", json=nodeMetadata)
@@ -158,7 +204,7 @@ app = Flask(__name__)
 
 # bundlesArrived = []  # stors the bundle id that the node has
 # recharges = []
-bundles = {}  # format {"bundle-id": [rechages], ...}
+recharges = {}  # format {"recharge-id": {target-card, amount, dateTime}, ...}
 nodeUuid = register()
 announceToMaster()
 
@@ -171,12 +217,13 @@ announceToMaster()
 def storeRechargesBundle():
     data = request.json
 
-    bundleID = data["bundle-id"]
-    recharges = data["recharges"]
-    bundles[bundleID] = recharges
+    recharges.update(data["recharges"])
 
-    success = "Stored, ready to be propagated"
+    success = "Stored the initial recharges, ready to be propagated"
+
     print(success)
+    print("Stored this: ")
+    print(recharges)
     return success
 
 
@@ -189,11 +236,17 @@ def sendToNode():
 
     destination = data["destination"]
 
-    internalBundleID = uuid.uuid4()
-    createPackage(uuid=nodeUuid, destination=destination, dataText=json.dumps(bundles))
+    if len(recharges) > 0:
+        createPackage(
+            uuid=nodeUuid, destination=destination, dataText=json.dumps(recharges)
+        )
+        print("Sent recharges to " + destination)
+    else:
+        print("No recharges to send to " + destination)
 
-    print("Sent bundle " + internalBundleID + " to " + destination)
-    return "Sent"
+    print("Recharges length: " + str(len(recharges)))
+
+    return "Ok"
 
 
 #   Master server communicates to this node application agent (this server)
@@ -201,19 +254,20 @@ def sendToNode():
 @app.route("/fetch-bundles", methods=["POST"])
 def fetchBundles():
     # retry fetching
-    @retry_with_backoff(retries=3)
-    def fetchWithBackoff():
-        bundles = fetch(nodeUuid)
 
-        if len(bundles) == 0:
-            raise Exception("Empty fetching, bundle may not have been sent")
+    # TO DO, DROP BUNDLES WITH bundleControlFlags=ADMINISTRATIVE_PAYLOAD
 
-        return bundles
+    bundlesFetched = fetch_with_exponential_backoff(fetch, nodeUuid)
+    print("bundlesFetched raw ", bundlesFetched)
 
-    bundlesFetched = fetchWithBackoff()
+    fetchedRecharges = unpackBundles(bundlesFetched)
+    print("fetched recharges; ", fetchedRecharges)
 
-    bundles.update(bundlesFetched)
+    recharges.update(fetchedRecharges)
     print("Received bundles")
+    print("Recharges in node: ", str(recharges))
+
+    return "Bundles fetched"
 
 
 if __name__ == "__main__":

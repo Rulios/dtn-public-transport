@@ -64,23 +64,34 @@
         let stopSimulation = false;
 
         //stores the recharges made
-        const recharges = [];
+        let recharges = {};
         let nodes = []
 
         //
         let lastNearbyNodes = [];
 
+
+        
         document.querySelector("#rechargeBtn").addEventListener("click", function(){
             let amount = document.querySelector("input[name='amount']")
             let transaction = {
+                "target-card": "1", //specifies the target bus card that the recharge will be made to
                 amount: amount.value,
                 dateTime: new Date().toJSON()
             }
-            recharges.push(transaction);
+            recharges[`${uuidv4().toString()}`] = transaction;
             
             amount.value = ""
             addItemToTable(transaction)
         });
+
+
+        function uuidv4() {
+            return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+                (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+            );
+        }
+
 
         document.querySelector("#stopSimulationBtn").addEventListener("click", function(){
             stopSimulation = !stopSimulation
@@ -97,7 +108,7 @@
                 type: "application/json",
                 data: {
                     recharges: recharges,
-                    initialNode: initialNode
+                    "initial-node": initialNode
                 }
             }); 
 
@@ -252,6 +263,18 @@
                 }
             )
         }
+
+
+        function dispatchNodeInteraction(collisions){
+            axios({
+                method: "POST",
+                url: "/dispatch-node-interaction",
+                type: "application/json",
+                data: {
+                    collisions: collisions
+                }
+            })
+        }
        
         //   create loop func
         function loop() {
@@ -269,6 +292,12 @@
                 //gets the new nearby nodes that are different from the previous ones
                 let newNearbyNodes = compareCollisions(lastNearbyNodes, nearbyNodes)
 
+                if(newNearbyNodes.length > 0){
+                    console.log(newNearbyNodes)
+                    dispatchNodeInteraction(newNearbyNodes)
+                }
+
+                
 
                 //compare if nearby nodes are the same as the previous ones
                     
@@ -295,9 +324,9 @@
             .then(function(response){
                 nodes = nodes.concat(response.data)
 
-                for(let i = 0; i < 7; i ++){
+                /* for(let i = 0; i < 7; i ++){
                     nodes.push({name: "node" + i})
-                }
+                } */
 
                 //create the balls based on the amount of nodes
                 nodes.forEach(node => {
