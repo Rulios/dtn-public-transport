@@ -1,4 +1,5 @@
 from flask import Flask, request
+from flask_cors import CORS, cross_origin
 import requests
 from time import sleep
 import json
@@ -201,12 +202,14 @@ def announceToMaster():
 
 # NODE API SERVER TO BE COMMANDED BY MASTER SERVER
 app = Flask(__name__)
-
+cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 # bundlesArrived = []  # stors the bundle id that the node has
 # recharges = []
 recharges = {}  # format {"recharge-id": {target-card, amount, dateTime}, ...}
 nodeUuid = register()
+print("Announcing to master...")
 announceToMaster()
+print("Announced to master")
 
 
 # This route is not by DTN
@@ -249,6 +252,12 @@ def sendToNode():
     return "Ok"
 
 
+@app.route("/get-recharges", methods=["GET"])
+@cross_origin()
+def getRechargesInNode():
+    return recharges
+
+
 #   Master server communicates to this node application agent (this server)
 #   that it should fetch the bundles arrived.
 @app.route("/fetch-bundles", methods=["POST"])
@@ -258,10 +267,10 @@ def fetchBundles():
     # TO DO, DROP BUNDLES WITH bundleControlFlags=ADMINISTRATIVE_PAYLOAD
 
     bundlesFetched = fetch_with_exponential_backoff(fetch, nodeUuid)
-    print("bundlesFetched raw ", bundlesFetched)
+    # print("bundlesFetched raw ", bundlesFetched)
 
     fetchedRecharges = unpackBundles(bundlesFetched)
-    print("fetched recharges; ", fetchedRecharges)
+    # print("fetched recharges; ", fetchedRecharges)
 
     recharges.update(fetchedRecharges)
     print("Received bundles")

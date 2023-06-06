@@ -19,29 +19,50 @@
     
     <div class="m-5 w-100 grid grid-cols-2">
         <div >
-            <label for="amountRecharged">Cantidad recargada: </label>
-            <input type="number" name="amount" placeholder="$...">
-            <button id="rechargeBtn">RECARGAR</button>
-            <button id="stopSimulationBtn">Parar simulación</button>
-        </div>
+
+            <div class="mb-5">
+                <label for="amountRecharged">Amount recharged: </label>
+                <input type="number" name="amount" placeholder="$...">
+                <button id="rechargeBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">RECHARGE</button>
+                <button id="stopSimulationBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">TOGGLE SIMULATION</button>
     
-        <div >
-            <label for="initialNode">Nodo inicial: </label>
-            <input type="text" name="initialNode" placeholder="node-1, node-2...">
-            <button class="shadow" id="propagateBtn">PROPAGAR RECARGA</button>
+            </div>
+            
+            <div class="mt-5">
+                <h4 class="text-center mt-3">Search recharges in node</h4>
+                <label for="node">Node: </label>
+                <input type="text" name="node" placeholder="node0, node1, ...">
+                <button id="searchInNodeBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">SEARCH</button>
+                <table id="rechargesInNodeTable" class="w-full">
+                    <tr>
+                        <th>Amount ($)</th>
+                        <th>Created at</th>
+                    </tr>
+                </table>
+            </div>
+        </div>
 
         
-            <h4 class="text-center mt-3">Recargas realizadas</h4>
+    
+        <div >
+            <label for="initialNode">Initial propagating node: </label>
+            <input type="text" name="initialNode" placeholder="node-1, node-2...">
+            <button class="shadow bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" id="propagateBtn">PROPAGATE</button>
+
+        
+            <h4 class="text-center mt-3">Recharges not propagated in the network</h4>
 
             <table id="rechargeTable" class="w-full">
                 <tr>
-                    <th>Monto ($)</th>
-                    <th>Fecha realizada</th>
+                    <th>Amount ($)</th>
+                    <th>Created at</th>
                 </tr>
             </table>
             
         </div>
     </div>
+
+
     
 
     <!-- scripiting -->
@@ -64,7 +85,8 @@
         let stopSimulation = false;
 
         //stores the recharges made
-        let recharges = {};
+        let recharges = {}; //
+        let rechargesQueriedInNode = {};
         let nodes = []
 
         //
@@ -82,7 +104,7 @@
             recharges[`${uuidv4().toString()}`] = transaction;
             
             amount.value = ""
-            addItemToTable(transaction)
+            updateTable(recharges, "#rechargeTable")
         });
 
 
@@ -112,10 +134,48 @@
                 }
             }); 
 
+            recharges = {}
+
+            updateTable(recharges, "#rechargeTable")
+
         }); 
 
-        function addItemToTable(item){
-            const table = document.querySelector("#rechargeTable")
+        document.querySelector("#searchInNodeBtn").addEventListener("click", function(){
+            let nodeID = document.querySelector("input[name='node']").value;
+            let nodeAgentIP = nodes.find(node =>{
+                return node["name"] === nodeID ? node["agentIP"] : null
+            })["agentIP"]
+
+            
+            let url = `${nodeAgentIP}/get-recharges`
+            
+            //do api request to the inputted node
+            axios.get(url)
+                .then(response => {
+                    rechargesQueriedInNode = response.data
+                    updateTable(rechargesQueriedInNode, "#rechargesInNodeTable")
+                })
+
+        }); 
+
+        function updateTable(rechargesData,selector){
+            const table = document.querySelector(selector)
+            let index = 0; 
+
+            for(let i = table.rows.length - 1; i > 0; i--){
+                table.deleteRow(i)
+            }
+
+            console.log(rechargesData)
+
+            for(const rechargeID in rechargesData){
+                addItemToTable(rechargesData[rechargeID], selector)
+            }
+        }
+
+
+        function addItemToTable(item, selector){
+            const table = document.querySelector(selector)
 
             let row = table.insertRow();
                 let amount = row.insertCell(0);
