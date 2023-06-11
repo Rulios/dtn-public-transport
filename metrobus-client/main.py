@@ -25,10 +25,21 @@ import json
 from uuid import uuid4
 import os
 
+from pn532pi import Pn532HSU, Pn532
+
+hsu = Pn532HSU(1)
+nfc = Pn532(hsu)
+
+
+def setup():
+    nfc.begin()
+    # ...
+
+
 DTN_CLIENT_RECHARGE_SERVER_ADDRESS = os.getenv("DTN_CLIENT_RECHARGE_SERVER_ADDRESS")
 
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=".")
 
 
 nodes = []

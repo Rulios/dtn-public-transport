@@ -3,9 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <title>Metro bus client</title>
 </head>
 <body>
     
+    <div class="text-center">
+        <h1>
+            METROBUS CLIENT 
+        </h1>
+        
+        <h3>
+            This client queries to the individual node (metrobus) to update the balance in the NFC card
+        </h3>
+    </div>
+
+    <div class="m-5 w-100 grid grid-cols-1">
+        <label for="nodeSelector">Select the metrobus: </label>
+        <select name="availableNodes" id="availableNodes"></select>
+    </div>
+
+    <div id="nfcDeviceStatus">
+        <h3>Please approach the card into the NFC device...</h3>
+        <h3>Processing operations...</h3>
+        <h3>Balance updated</h3>
+    </div>
+
+
+    <!---SCRIPTING-->
+
+    <script>
+        
+    </script>
+
 </body>
 </html>
