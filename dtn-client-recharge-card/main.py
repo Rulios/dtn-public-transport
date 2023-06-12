@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request
+from flask_cors import CORS, cross_origin
 import requests
 import json
 from uuid import uuid4
@@ -6,7 +7,7 @@ from uuid import uuid4
 
 # NODE API SERVER TO BE COMMANDED BY MASTER SERVER
 app = Flask(__name__)
-
+CORS(app)
 
 uuid = ""
 nodes = []
@@ -85,6 +86,7 @@ def registerNode():
     return "Node Registered"
 
 
+@cross_origin()
 @app.route("/get-nodes", methods=["GET"])
 def getNodes():
     return nodes

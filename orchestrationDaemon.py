@@ -2,7 +2,7 @@ import os
 
 # THIS is a DAEMON to create and orchestrate the DTN nodes
 
-AMOUNT_OF_NODES = 7
+AMOUNT_OF_NODES = 1
 BASE_NODE_PORT = 8090
 BASE_ENDPOINT = 4556
 BASE_AGENT_SERVER_PORT = 90

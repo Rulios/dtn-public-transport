@@ -21,7 +21,9 @@
 
     <div class="m-5 w-100 grid grid-cols-1">
         <label for="nodeSelector">Select the metrobus: </label>
-        <select name="availableNodes" id="availableNodes"></select>
+        <select name="availableNodes" id="availableNodes">
+            <option value=""></option>
+        </select>
     </div>
 
     <div id="nfcDeviceStatus">
@@ -35,6 +37,65 @@
 
     <script>
         
+        let availableNodes = [];
+        let nodeList = document.querySelector("#availableNodes");
+
+
+        let socket;
+
+        function connectWebSocket() {
+        socket = new WebSocket("ws://localhost:3001/ws"); // Replace with your Flask app's WebSocket URL
+        
+        socket.onopen = function() {
+            console.log("WebSocket connected");
+        };
+
+        socket.onmessage = function(event) {
+            console.log("Received message: " + event.data);
+            // Handle the received message from the server
+        };
+
+        socket.onclose = function() {
+            console.log("WebSocket closed");
+        };
+        }
+
+
+        window.onload = function(){
+
+            connectWebSocket()
+
+
+            axios.get(`/get-nodes`)
+                .then(response => {
+                    availableNodes = response.data
+
+
+                    availableNodes.forEach(node => {
+                        let {name} = node;
+
+                        let option = document.createElement("option")
+                        option.value = name;
+                        option.innerHTML = name;
+
+                        nodeList.append(option)
+                    })
+
+                });
+        }
+
+        nodeList.addEventListener("change", function(e){
+            let selectedNode = e.target.value
+
+            let message = {
+                type: "new-selected-node",
+                value: selectedNode
+            };
+
+            if(selectedNode !== "")
+                socket.send(JSON.stringify(message))
+        }); 
+
     </script>
 
 </body>

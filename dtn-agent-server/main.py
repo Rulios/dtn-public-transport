@@ -182,7 +182,7 @@ def fetch_with_exponential_backoff(
             delay = min(max_delay, delay * 2)
 
             print(f"Retrying in {backoff_delay:.2f} seconds...")
-            time.sleep(backoff_delay)
+            sleep(backoff_delay)
 
     raise Exception(f"Failed to fetch data after {max_retries} retries.")
 
@@ -252,6 +252,9 @@ def sendToNode():
     return "Ok"
 
 
+cors
+
+
 @app.route("/get-recharges", methods=["GET"])
 @cross_origin()
 def getRechargesInNode():
@@ -300,7 +303,7 @@ if __name__ == "__main__":
 
         match option:
             case "1":
-                print("Enter target node name: ")
+                print("Enter target node name: ")cors
                 targetNode = input()
 
                 print("Enter message: ")
