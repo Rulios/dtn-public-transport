@@ -202,7 +202,7 @@ def announceToMaster():
 
 # NODE API SERVER TO BE COMMANDED BY MASTER SERVER
 app = Flask(__name__)
-cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
+cors = CORS(app, resources={r"*": {"origins": "*"}})
 # bundlesArrived = []  # stors the bundle id that the node has
 # recharges = []
 recharges = {}  # format {"recharge-id": {target-card, amount, dateTime}, ...}
@@ -252,9 +252,6 @@ def sendToNode():
     return "Ok"
 
 
-cors
-
-
 @app.route("/get-recharges", methods=["GET"])
 @cross_origin()
 def getRechargesInNode():
@@ -266,8 +263,6 @@ def getRechargesInNode():
 @app.route("/fetch-bundles", methods=["POST"])
 def fetchBundles():
     # retry fetching
-
-    # TO DO, DROP BUNDLES WITH bundleControlFlags=ADMINISTRATIVE_PAYLOAD
 
     bundlesFetched = fetch_with_exponential_backoff(fetch, nodeUuid)
     # print("bundlesFetched raw ", bundlesFetched)
@@ -284,71 +279,3 @@ def fetchBundles():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=AGENT_PORT)
-
-""" try:
-
-    uuid = register()
-
-    while True:
-        print("This is an app agent for: " + SOURCE_NODE)
-        print("Querying REST to URL: " + REST_API_URL)
-        print("Press number")
-        print("1    - Send bundle")
-        print("2    - Fetch bundle")
-        print("3    - Send 10 bundles")
-
-        option = input()
-
-        print("option: " + option)
-
-        match option:
-            case "1":
-                print("Enter target node name: ")cors
-                targetNode = input()
-
-                print("Enter message: ")
-                message = input()
-
-                print("sending bundle")
-                createPackage(
-                    uuid=uuid,
-                    destination=targetNode,
-                    dataText=message
-                )
-
-            case "2":
-
-                bundles = fetch(uuid)
-
-                if (len(bundles) > 0):
-                    print("Here are the bundles fetched:")
-                    print("Total bundles: " + str(len(bundles)))
-                    print(unpackBundles(bundles))
-                    # print(type(unpackBundles(bundles)[0]))
-                else:
-                    print("NO bundles received")
-
-            case "3":
-                # send 10 bundles to the target node
-
-                print("Enter target node name: ")
-                targetNode = input()
-
-                for i in range(10):
-                    print("sending bundle #" + str(i))
-                    createPackage(
-                        uuid=uuid,
-                        destination=targetNode,
-                        dataText='bundle #' + str(i)
-                    )
-                    sleep(1)
-
-                print("ALL BUNDLES SENT, check the other node")
-        input()
-        os.system("clear")
-
-except KeyboardInterrupt:
-
-    print("Node stopped")
-    unregister(uuid)
- """

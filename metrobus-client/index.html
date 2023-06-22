@@ -26,10 +26,8 @@
         </select>
     </div>
 
-    <div id="nfcDeviceStatus">
-        <h3>Please approach the card into the NFC device...</h3>
-        <h3>Processing operations...</h3>
-        <h3>Balance updated</h3>
+    <div id="nfcDeviceStatus" class="mx-5">
+     
     </div>
 
 
@@ -39,7 +37,7 @@
         
         let availableNodes = [];
         let nodeList = document.querySelector("#availableNodes");
-
+        const defaultMessage = "Please select the Metrobus you're onboarding into"
 
         let socket;
 
@@ -52,6 +50,36 @@
 
         socket.onmessage = function(event) {
             console.log("Received message: " + event.data);
+
+            let {type, value} = JSON.parse(event.data);
+
+            let nfcDeviceStatus = document.querySelector("#nfcDeviceStatus");
+
+            switch (type) {
+                case "status":
+                    
+                    nfcDeviceStatus.innerHTML = value
+
+                break;
+
+                case "status-complete":
+
+                    nfcDeviceStatus.innerHTML = value
+
+                    setTimeout(() => {
+
+                        nfcDeviceStatus.innerHTML = defaultMessage
+                        nodeList.value = ""
+
+                    }, 5000);
+
+                break;
+
+                default:
+                    break;
+            }
+
+
             // Handle the received message from the server
         };
 
@@ -64,6 +92,7 @@
         window.onload = function(){
 
             connectWebSocket()
+            nfcDeviceStatus.innerHTML = defaultMessage
 
 
             axios.get(`/get-nodes`)

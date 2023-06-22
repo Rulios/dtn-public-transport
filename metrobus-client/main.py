@@ -25,7 +25,7 @@ import json
 from uuid import uuid4
 import os
 from flask_sock import Sock
-from time import sleep
+import time
 
 """ from pn532pi import Pn532HSU, Pn532
 
@@ -91,6 +91,28 @@ def echo(sock):
         )
 
         # wait for nfc reader to read
+
+        time.sleep(2)
+
+        sock.send(
+            json.dumps(
+                {
+                    "type": "status",
+                    "value": "Updating balance in the card",
+                }
+            )
+        )
+
+        time.sleep(1)
+
+        sock.send(
+            json.dumps(
+                {
+                    "type": "status-complete",
+                    "value": "Balance updated, CARD BALANCE: ",
+                }
+            )
+        )
 
         # download the data into the card
 

@@ -17,40 +17,35 @@
         <canvas class="m-auto" id="simulationCanvas"></canvas>
     </div>
     
-    <div class="m-5 w-100 grid grid-cols-2">
-        <div >
+    <div class="m-5 w-100 grid grid-cols-3">
+        <div class="m-2">
 
-            <div class="mb-5">
-                <label for="amountRecharged">Amount recharged: </label>
-                <input type="number" name="amount" placeholder="$...">
-                <button id="rechargeBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">RECHARGE</button>
+            <fieldset class="mt-2 border border-2 p-3 ">
+                <legend class="font-bold">Simulator Controller</legend>
+                <h2>Available Metro stations to be positioned on the simulator:</h2>
+                <h2 id="availableMetroStationNodes"></h2>
+                <button id="toggleAddMetroStationBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">ADD METRO STATION</button>
                 <button id="stopSimulationBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">TOGGLE SIMULATION</button>
-    
-            </div>
+
+            </fieldset>
+
+            <fieldset class="mb-5 mt-5 border border-2 p-3" >
+                <legend class="font-bold">Top up form platform</legend>
+                <label for="amountRecharged">Amount recharged: </label>
+                <input type="number" name="amount" class="border" placeholder="$...">
+                <button id="rechargeBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">RECHARGE</button>
+            </fieldset>
             
-            <div class="mt-5">
-                <h4 class="text-center mt-3">Search recharges in node</h4>
-                <label for="node">Node: </label>
-                <input type="text" name="node" placeholder="node0, node1, ...">
-                <button id="searchInNodeBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">SEARCH</button>
-                <table id="rechargesInNodeTable" class="w-full">
-                    <tr>
-                        <th>Amount ($)</th>
-                        <th>Created at</th>
-                    </tr>
-                </table>
-            </div>
+            
         </div>
 
-        
-    
-        <div >
+        <fieldset class="p-3 border border-2 m-2">
+            <legend class="font-bold">DTN Bootstrapper</legend>
             <label for="initialNode">Initial propagating node: </label>
-            <input type="text" name="initialNode" placeholder="node-1, node-2...">
             <button class="shadow bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" id="propagateBtn">PROPAGATE</button>
 
         
-            <h4 class="text-center mt-3">Recharges not propagated in the network</h4>
+            <h4 class="text-center mt-3 font-bold">Recharges not propagated in the network</h4>
 
             <table id="rechargeTable" class="w-full">
                 <tr>
@@ -59,7 +54,21 @@
                 </tr>
             </table>
             
-        </div>
+        </fieldset>
+
+        <fieldset class="p-3 border border-2 m-2">
+            <legend class="font-bold">Metrobus querier</legend>
+            <h4 class="font-bold mt-3">Search recharges in node</h4>
+            <label for="node">Node: </label>
+            <input type="text" name="node" class="border" placeholder="node0, node1, ...">
+            <button id="searchInNodeBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">SEARCH</button>
+            <table id="rechargesInNodeTable" class="w-full">
+                <tr>
+                    <th>Amount ($)</th>
+                    <th>Created at</th>
+                </tr>
+            </table>
+        </fieldset>
     </div>
 
 
@@ -89,6 +98,12 @@
         let rechargesQueriedInNode = {};
         let nodes = []
 
+        //for the metro stations
+        let isFollowingCursor = false;
+        let newMetroXPosition = 0;
+        let newMetroYPosition = 0;
+        let availableMetroStationNodes = [];
+
         //
         let lastNearbyNodes = [];
 
@@ -115,14 +130,53 @@
         }
 
 
+        document.querySelector("#toggleAddMetroStationBtn").addEventListener("click", function(){
+            console.log("clickeds")
+            isFollowingCursor = !isFollowingCursor
+            stopSimulation = true;
+
+        });
+
+        canvas.addEventListener("click", (event) => {
+            if (isFollowingCursor) {
+                // Insert the circle at the clicked position
+                const rect = canvas.getBoundingClientRect();
+
+                let metroStation = availableMetroStationNodes.pop()
+                console.log(metroStation)
+                /* const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top; */
+                const ball = new Ball(
+                        newMetroXPosition,
+                        newMetroYPosition,
+                        15,
+                        `white`,
+                        metroStation.name,
+                        true
+                );
+
+                balls.push(ball)
+                balls[balls.length - 1].drawBall();
+
+                updateMetroStationCounter()
+            }
+        });
+
+        canvas.addEventListener("mousemove", (event) => {
+            if (isFollowingCursor) {
+                const rect = canvas.getBoundingClientRect();
+                newMetroXPosition = event.clientX - rect.left;
+                newMetroYPosition = event.clientY - rect.top;
+            }
+        });
+
         document.querySelector("#stopSimulationBtn").addEventListener("click", function(){
             stopSimulation = !stopSimulation
         });
 
+
+
         document.querySelector("#propagateBtn").addEventListener("click", function(){
-            let initialNode = document.querySelector("input[name='initialNode']").value;
-            
-            
             //do api request to master dtn
             axios({
                 method: "POST",
@@ -130,8 +184,9 @@
                 type: "application/json",
                 data: {
                     recharges: recharges,
-                    "initial-node": initialNode
                 }
+            }).then(() => {
+                alert("All metro stations are ready to propagate the recharges")
             }); 
 
             recharges = {}
@@ -146,16 +201,21 @@
                 return node["name"] === nodeID ? node["agentIP"] : null
             })["agentIP"]
 
+            if(nodeAgentIP === undefined){
+                updateTable([], "#rechargesInNodeTable")
+            }else{
+                let url = `${nodeAgentIP}/get-recharges`
             
-            let url = `${nodeAgentIP}/get-recharges`
-            
-            //do api request to the inputted node
-            axios.get(url)
-                .then(response => {
-                    rechargesQueriedInNode = response.data
-                    updateTable(rechargesQueriedInNode, "#rechargesInNodeTable")
-                })
+                //do api request to the inputted node
+                axios.get(url)
+                    .then(response => {
+                        rechargesQueriedInNode = response.data
+                        updateTable(rechargesQueriedInNode, "#rechargesInNodeTable")
+                    })
 
+            }
+            
+            
         }); 
 
         function updateTable(rechargesData,selector){
@@ -173,6 +233,16 @@
             }
         }
 
+        function updateMetroStationCounter(){
+            document.querySelector("#availableMetroStationNodes").innerHTML = availableMetroStationNodes.length
+
+            if(availableMetroStationNodes.length === 0){
+                
+                document.querySelector("#toggleAddMetroStationBtn").disabled = true;
+            }else{
+                document.querySelector("#toggleAddMetroStationBtn").disabled = false;
+            }
+        }
 
         function addItemToTable(item, selector){
             const table = document.querySelector(selector)
@@ -187,14 +257,29 @@
   
         // create Ball class
         class Ball {
-          constructor(x, y, velx, vely, size, color, name) {
+            #frameUpdates = 0
+            #THRESHOLD_TO_RANDOMIZE_VELOCITY = 30
+
+          constructor(x, y, size, color, name, staticPosition = false) {
             this.x = x; // horizontal position of the ball
             this.y = y; // vertical position of the ball
-            this.velx = velx; // velocity x added to coordinate x when we animate our ball
-            this.vely = vely; // velocity y added to coordinate y
+
+
+            if(staticPosition){
+                this.velx = 0;
+                this.vely = 0;
+            }else{
+                this.velx = random(-2, 2);
+                this.vely = random(-2, 2);
+            }
+
+            this.staticPosition = staticPosition
+            
             this.size = size; // size is a radius of the ball
             this.color = color; // fill ball shape with given color
             this.name = name; //name of the node
+
+
           }
   
           // create draw func
@@ -229,6 +314,23 @@
             // everytime updateBall func is called
             this.x += this.velx;
             this.y += this.vely;
+
+            this.#randomizeVelocity()
+          }
+
+          #randomizeVelocity(){
+
+            if(!this.staticPosition){
+                if(this.#frameUpdates === this.#THRESHOLD_TO_RANDOMIZE_VELOCITY){
+                    this.velx = random(-1, 1);
+                    this.vely = random(-1, 1);
+                    this.#frameUpdates = 0;
+                }else{
+                    this.#frameUpdates ++;
+                }
+            }
+
+            
           }
         }
   
@@ -379,6 +481,11 @@
           
         }
 
+        //stop simulation so that it's possible to view the 
+        //arrangement of nodes
+        setTimeout(() => {
+            stopSimulation = true;
+        }, 150);
         
         axios.get("/get-nodes")
             .then(function(response){
@@ -388,24 +495,37 @@
                     nodes.push({name: "node" + i})
                 } */
 
-                //create the balls based on the amount of nodes
+                //create the balls based on the amount of METROBUS nodes
                 nodes.forEach(node => {
-                    let size = 15
-  
+                    const DEFAULT_BALL_SIZE = 10;
                     // create a new instance of Ball class
                     // now replace static number with random number
                     console.log(JSON.stringify(node))
-                    const ball = new Ball(
-                        random(size, width - size),
-                        random(size, height - size),
-                        random(-2, 2),
-                        random(-2, 2),
-                        size,
-                        `white`,
-                        node.name
-                    );
 
-                    balls.push(ball);
+                    let ballColor = "orange", 
+                        ballSize = 10,
+                        staticPosition; 
+
+                    if(node.name.includes("metroestacion")){
+                        /* ballColor = "white";
+                        ballSize = 15;
+                        staticPosition = true; */
+
+                        availableMetroStationNodes.push(node)
+                    }else{
+                        const ball = new Ball(
+                            random(ballSize, width - ballSize),
+                            random(ballSize, height - ballSize),
+                            ballSize,
+                            ballColor,
+                            node.name,
+                            staticPosition
+                        );
+
+                        balls.push(ball);
+                    }
+                    
+                    updateMetroStationCounter()
                 })
                     
             })

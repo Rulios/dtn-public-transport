@@ -2,7 +2,11 @@ import os
 
 # THIS is a DAEMON to create and orchestrate the DTN nodes
 
-AMOUNT_OF_NODES = 1
+# There's around 1436 metrobuses on fleet, obviously not every
+# metrobus is riding, but let's take the worst case scenario
+
+AMOUNT_OF_METROBUS_NODES = 5
+AMOUNT_OF_METRO_STATION_NODES = 2
 BASE_NODE_PORT = 8090
 BASE_ENDPOINT = 4556
 BASE_AGENT_SERVER_PORT = 90
@@ -43,14 +47,36 @@ print("This daemon controls the startup of containers of each node")
 currentNodePort = BASE_NODE_PORT
 currentNodeEndpoint = BASE_ENDPOINT
 currentNodeAgentPort = BASE_AGENT_SERVER_PORT
-for i in range(AMOUNT_OF_NODES):
-    nodeName = "node" + str(i)
+
+# STARTS THE METROBUS NODES
+for i in range(AMOUNT_OF_METROBUS_NODES):
+    nodeName = "metrobus-" + str(i)
     nodeLocalIp = "localhost:" + str(currentNodePort)
     nodeEndpoint = currentNodeEndpoint
     nodeAgentPort = currentNodeAgentPort
 
     print(
-        "Starting node (%s) at IP: %s, in the Endpoint: %s"
+        "Starting metrobus node (%s) at IP: %s, in the Endpoint: %s"
+        % (nodeName, nodeLocalIp, nodeEndpoint)
+    )
+    print("Agent instanced at 0.0.0.0:%s with the node" % (currentNodeAgentPort))
+
+    startNode(nodeName, nodeLocalIp, nodeEndpoint, nodeAgentPort)
+
+    nodes.append(nodeName)
+    currentNodePort += 1
+    currentNodeEndpoint += 1
+    currentNodeAgentPort += 1
+
+# STARTS THE METRO STATION NODES
+for i in range(AMOUNT_OF_METRO_STATION_NODES):
+    nodeName = "metroestacion-" + str(i)
+    nodeLocalIp = "localhost:" + str(currentNodePort)
+    nodeEndpoint = currentNodeEndpoint
+    nodeAgentPort = currentNodeAgentPort
+
+    print(
+        "Starting metro station node (%s) at IP: %s, in the Endpoint: %s"
         % (nodeName, nodeLocalIp, nodeEndpoint)
     )
     print("Agent instanced at 0.0.0.0:%s with the node" % (currentNodeAgentPort))

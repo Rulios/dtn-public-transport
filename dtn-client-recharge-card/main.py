@@ -13,6 +13,7 @@ uuid = ""
 nodes = []
 
 
+# TO DO, CHANGE THE STRUCTURE OF THE RECHARGES TO BALANCES
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -22,21 +23,19 @@ def searchNodeByName(name, nodeSet):
     return [element for element in nodeSet if element["name"] == name] or None
 
 
-# gets the first node in which the recharge will first be propagated
+# PROPAGATE THE RECHARGES ONLY TO THE METRO STATION NODES
 @app.route("/dispatch-recharges", methods=["POST"])
 def dispatchFirstBundle():
     data = request.json
 
-    nodeAgent = searchNodeByName(data["initial-node"], nodes)
+    for node in nodes:
+        if "metroestacion" in node["name"]:
+            # send
+            data = {"recharges": data["recharges"]}
 
-    nodeAgentIP = nodeAgent[0]["agentIP"]
+            requests.post(node["agentIP"] + "/store-recharges-bundle", json=data)
 
-    data = {"recharges": data["recharges"]}
-
-    # send
-    requests.post(nodeAgentIP + "/store-recharges-bundle", json=data)
-    print("Sent initial recharges to initial node")
-    return "Ok"
+    return "All metro stations areready to propagate the recharges"
 
 
 # trigger node-2-node interaction with bundles
