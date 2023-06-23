@@ -5,8 +5,8 @@ import os
 # There's around 1436 metrobuses on fleet, obviously not every
 # metrobus is riding, but let's take the worst case scenario
 
-AMOUNT_OF_METROBUS_NODES = 5
-AMOUNT_OF_METRO_STATION_NODES = 2
+AMOUNT_OF_METROBUS_NODES = 1
+AMOUNT_OF_METRO_STATION_NODES = 1
 BASE_NODE_PORT = 8090
 BASE_ENDPOINT = 4556
 BASE_AGENT_SERVER_PORT = 90

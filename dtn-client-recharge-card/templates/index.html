@@ -41,7 +41,6 @@
 
         <fieldset class="p-3 border border-2 m-2">
             <legend class="font-bold">DTN Bootstrapper</legend>
-            <label for="initialNode">Initial propagating node: </label>
             <button class="shadow bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" id="propagateBtn">PROPAGATE</button>
 
         
@@ -59,9 +58,14 @@
         <fieldset class="p-3 border border-2 m-2">
             <legend class="font-bold">Metrobus querier</legend>
             <h4 class="font-bold mt-3">Search recharges in node</h4>
-            <label for="node">Node: </label>
-            <input type="text" name="node" class="border" placeholder="node0, node1, ...">
-            <button id="searchInNodeBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">SEARCH</button>
+            
+            <label for="nodeSelector">Select the node to query: </label>
+            <select name="availableNodes" id="availableNodes">
+                <option value=""></option>
+            </select>
+
+
+
             <table id="rechargesInNodeTable" class="w-full">
                 <tr>
                     <th>Amount ($)</th>
@@ -79,7 +83,10 @@
     <script>
         // gets the canvas element
         const canvas = document.querySelector('#simulationCanvas');
-  
+
+        //select list element
+        let nodeList = document.querySelector("#availableNodes");
+
         // gets the width and height of browser viewport
         const width = window.innerWidth * 0.7;
         const height = window.innerHeight * 0.7;
@@ -195,7 +202,30 @@
 
         }); 
 
-        document.querySelector("#searchInNodeBtn").addEventListener("click", function(){
+
+        nodeList.addEventListener("change", function(e){
+            let nodeID = e.target.value
+
+            let nodeAgentIP = nodes.find(node =>{
+                return node["name"] === nodeID ? node["agentIP"] : null
+            })["agentIP"] 
+
+            if(nodeAgentIP === undefined ){
+                updateTable([], "#rechargesInNodeTable")
+            }else{
+                let url = `${nodeAgentIP}/get-recharges`
+            
+                //do api request to the inputted node
+                axios.get(url)
+                    .then(response => {
+                        rechargesQueriedInNode = response.data
+                        updateTable(rechargesQueriedInNode, "#rechargesInNodeTable")
+                    })
+
+            }
+        }); 
+
+        /* document.querySelector("#searchInNodeBtn").addEventListener("click", function(){
             let nodeID = document.querySelector("input[name='node']").value;
             let nodeAgentIP = nodes.find(node =>{
                 return node["name"] === nodeID ? node["agentIP"] : null
@@ -216,7 +246,7 @@
             }
             
             
-        }); 
+        });  */
 
         function updateTable(rechargesData,selector){
             const table = document.querySelector(selector)
@@ -437,6 +467,16 @@
                 }
             })
         }
+
+        function createNodeOption(node){
+            let {name} = node;
+
+                        let option = document.createElement("option")
+                        option.value = name;
+                        option.innerHTML = name;
+
+                        nodeList.append(option)
+        }
        
         //   create loop func
         function loop() {
@@ -524,6 +564,9 @@
 
                         balls.push(ball);
                     }
+
+                    //adds the html option element
+                    createNodeOption(node)
                     
                     updateMetroStationCounter()
                 })
