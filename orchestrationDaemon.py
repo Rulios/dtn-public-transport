@@ -5,8 +5,8 @@ import os
 # There's around 1436 metrobuses on fleet, obviously not every
 # metrobus is riding, but let's take the worst case scenario
 
-AMOUNT_OF_METROBUS_NODES = 1
-AMOUNT_OF_METRO_STATION_NODES = 1
+AMOUNT_OF_METROBUS_NODES = 10
+AMOUNT_OF_METRO_STATION_NODES = 2
 BASE_NODE_PORT = 8090
 BASE_ENDPOINT = 4556
 BASE_AGENT_SERVER_PORT = 90
@@ -89,8 +89,10 @@ for i in range(AMOUNT_OF_METRO_STATION_NODES):
     currentNodeAgentPort += 1
 
 
+print()
+print("------------NODES CREATED----------")
 print(nodes)
-input("Press any key to take down the nodes")
+input("Press any key to gracefully take down the nodes")
 
 
 for node in nodes:

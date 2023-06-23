@@ -88,7 +88,7 @@
         let nodeList = document.querySelector("#availableNodes");
 
         // gets the width and height of browser viewport
-        const width = window.innerWidth * 0.7;
+        const width = window.innerWidth * 0.8;
         const height = window.innerHeight * 0.7;
   
         //   set the width and height of canvas equal to browser viewport
@@ -151,8 +151,6 @@
 
                 let metroStation = availableMetroStationNodes.pop()
                 console.log(metroStation)
-                /* const x = event.clientX - rect.left;
-                const y = event.clientY - rect.top; */
                 const ball = new Ball(
                         newMetroXPosition,
                         newMetroYPosition,
@@ -225,29 +223,6 @@
             }
         }); 
 
-        /* document.querySelector("#searchInNodeBtn").addEventListener("click", function(){
-            let nodeID = document.querySelector("input[name='node']").value;
-            let nodeAgentIP = nodes.find(node =>{
-                return node["name"] === nodeID ? node["agentIP"] : null
-            })["agentIP"]
-
-            if(nodeAgentIP === undefined){
-                updateTable([], "#rechargesInNodeTable")
-            }else{
-                let url = `${nodeAgentIP}/get-recharges`
-            
-                //do api request to the inputted node
-                axios.get(url)
-                    .then(response => {
-                        rechargesQueriedInNode = response.data
-                        updateTable(rechargesQueriedInNode, "#rechargesInNodeTable")
-                    })
-
-            }
-            
-            
-        });  */
-
         function updateTable(rechargesData,selector){
             const table = document.querySelector(selector)
             let index = 0; 
@@ -288,7 +263,7 @@
         // create Ball class
         class Ball {
             #frameUpdates = 0
-            #THRESHOLD_TO_RANDOMIZE_VELOCITY = 30
+            #THRESHOLD_TO_RANDOMIZE_VELOCITY = 40
 
           constructor(x, y, size, color, name, staticPosition = false) {
             this.x = x; // horizontal position of the ball
@@ -352,8 +327,8 @@
 
             if(!this.staticPosition){
                 if(this.#frameUpdates === this.#THRESHOLD_TO_RANDOMIZE_VELOCITY){
-                    this.velx = random(-1, 1);
-                    this.vely = random(-1, 1);
+                    this.velx = random(-2, 2);
+                    this.vely = random(-2, 2);
                     this.#frameUpdates = 0;
                 }else{
                     this.#frameUpdates ++;
@@ -568,8 +543,8 @@
                     //adds the html option element
                     createNodeOption(node)
                     
-                    updateMetroStationCounter()
                 })
+                updateMetroStationCounter()
                     
             })
         
