@@ -103,47 +103,18 @@ def loop():
     # We probably have a Mifare Classic card ...
     print("Seems to be a Mifare Classic card (4 byte UID)")
 
-    # Try to format the card for NDEF data
-    success = nfc.mifareclassic_AuthenticateBlock (uid, 0, 0, keya)
-    if (not success):
-      print("Unable to authenticate block 0 to enable card formatting!")
-      return
-    success = nfc.mifareclassic_FormatNDEF()
-    if (not success):
-      print("Unable to format the card for NDEF")
-      return
+    # Create an NDEF message with a Text record in English ("en")
+    ndef_message = [
+        pn532.NdefRecord.create_text_record("Hello, NFC!", "en")
+    ]
 
-    print("Card has been formatted for NDEF data using MAD1")
+    # Write the NDEF message to the NFC tag
+    success = nfc.writeNDEF(ndef_message)
 
-    # Try to authenticate block 4 (first block of sector 1) using our key
-    success = nfc.mifareclassic_AuthenticateBlock (uid, 4, 0, keya)
-
-    # Make sure the authentication process didn't fail
-    if (not success):
-      print("Authentication failed.")
-      return
-
-    # Try to write a URL
-    print("Writing URI to sector 1 as an NDEF Message")
-
-    # Authenticated seems to have worked
-    # Try to write an NDEF record to sector 1
-    # Use 0x01 for the URI Identifier Code to prepend "http:#www."
-    # to the url (and save some space).  For information on URI ID Codes
-    # see http:#www.ladyada.net/wiki/private/articlestaging/nfc/ndef
-    if (len(url)  > 38):
-      # The length is also checked in the WriteNDEFURI function, but lets
-      # warn users here just in case they change the value and it's bigger
-      # than it should be
-      print("URI is too long ... must be less than 38 characters long")
-      return
-
-    # URI is within size limits ... write it to the card and report success/failure
-    success = nfc.mifareclassic_WriteNDEFURI(1, ndefprefix, url)
-    if (success):
-      print("NDEF URI Record written to sector 1")
+    if success:
+        print("NDEF message written to the NFC tag successfully.")
     else:
-      print("NDEF Record creation failed! :(")
+        print("Failed to write NDEF message to the NFC tag.")
 
   # Wait a bit before trying again
   print("\n\nDone!")

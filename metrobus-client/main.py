@@ -25,22 +25,62 @@ import json
 from uuid import uuid4
 import os
 from flask_sock import Sock
+
+import binascii
 import time
 
-""" from pn532pi import Pn532HSU, Pn532
+from pn532pi import Pn532, pn532
+from pn532pi import Pn532I2c
 
-hsu = Pn532HSU(1)
-nfc = Pn532(hsu)
+#set the communication interface to I2C
+PN532_I2C = Pn532I2c(1)
+nfc = Pn532(PN532_I2C)
 
 
+#search for pn532 chipset
 def setup():
-    nfc.begin() """
-# ...
+  print("-------Looking for PN532--------")
+
+  nfc.begin()
+
+  versiondata = nfc.getFirmwareVersion()
+  if not versiondata:
+    print("Didn't find PN53x board")
+    raise RuntimeError("Didn't find PN53x board")  # halt
+
+  # Got ok data, print it out!
+  print("Found chip PN5 {:#x} Firmware ver. {:d}.{:d}".format((versiondata >> 24) & 0xFF, (versiondata >> 16) & 0xFF,
+                                                             (versiondata >> 8) & 0xFF))
+
+  # configure board to read RFID tags
+  nfc.SAMConfig()
 
 
 DTN_CLIENT_RECHARGE_SERVER_ADDRESS = os.getenv(
     "DTN_CLIENT_RECHARGE_SERVER_ADDRESS", "http://localhost:300'"
 )
+
+#performs the operation of writing and reading the data in the card
+def loop():
+
+    # Wait for an ISO14443A type card (Mifare, etc.).  When one is found
+    # 'uid' will be populated with the UID, and uidLength will indicate
+    # if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
+    success, uid = nfc.readPassiveTargetID(cardbaudrate=pn532.PN532_MIFARE_ISO14443A_106KBPS)
+
+    if (success):
+        # Display some basic information about the card
+        print("Found an ISO14443A card")
+        print("UID Length: {:d}".format(len(uid)))
+        print("UID Value: {}".format(binascii.hexlify(uid)))
+
+        # Make sure this is a Mifare Classic card
+        if (len(uid) != 4):
+        print("Ooops ... this doesn't seem to be a Mifare Classic card!")
+        return
+
+        # We probably have a Mifare Classic card ...
+        print("Seems to be a Mifare Classic card (4 byte UID)")
 
 
 app = Flask(__name__, template_folder=".")
@@ -154,5 +194,6 @@ def getNodes():
 
 
 if __name__ == "__main__":
+    setup()
     app.run(host="0.0.0.0", port=3001, debug=True)
     # app["TEMPLATES_AUTO_RELOAD"] = True
