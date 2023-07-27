@@ -16,6 +16,8 @@ from pn532pi import Pn532Hsu
 from pn532pi import Pn532I2c
 from pn532pi import Pn532Spi
 
+import ndef 
+
 SPI = False
 I2C = True
 HSU = False
@@ -105,7 +107,7 @@ def loop():
 
     # Create an NDEF message with a Text record in English ("en")
     ndef_message = [
-        pn532.NdefRecord.create_text_record("Hello, NFC!", "en")
+        ndef.TextRecord("Hola Mundo", language="es")
     ]
 
     # Write the NDEF message to the NFC tag
