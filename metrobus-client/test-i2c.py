@@ -106,9 +106,14 @@ def loop():
     print("Seems to be a Mifare Classic card (4 byte UID)")
 
     # Create an NDEF message with a Text record in English ("en")
-    ndef_message = [
-        ndef.TextRecord("Hola Mundo", language="es")
-    ]
+    
+    # Create a Text record
+    text_payload = 'hello world'
+    text_record = (ndef.TNF_WELL_KNOWN, ndef.RTD_TEXT, 'en', text_payload)
+    
+    # Create an NDEF message
+    ndef_message = ndef.message_encoder([text_record])
+    
 
     # Write the NDEF message to the NFC tag
     success = nfc.writeNDEF(ndef_message)
