@@ -1,26 +1,21 @@
 """
-    This example attempts to format a clean Mifare Classic 1K card as
-    an NFC Forum tag (to store NDEF messages that can be read by any
-    NFC enabled Android phone, etc.)
-
-    Note that you need the baud rate to be 115200 because we need to print
-    out the data and read from the card at the same time!
+    This examples attempts to take a Mifare Classic 1K card that has been
+    formatted for NDEF messages using mifareclassic_formatndef, and resets
+    the authentication keys back to the Mifare Classic defaults
 
     To enable debug message, define DEBUG in nfc/pn532_debug.h
 """
 import binascii
 import time
 
-from pn532pi import Pn532, pn532
+from pn532pi import pn532, Pn532
 from pn532pi import Pn532Hsu
 from pn532pi import Pn532I2c
 from pn532pi import Pn532Spi
 
-import ndef 
-
 SPI = False
-I2C = True
-HSU = False
+I2C = False
+HSU = True
 
 if SPI:
     PN532_SPI = Pn532Spi(Pn532Spi.SS0_GPIO8)
@@ -32,26 +27,28 @@ elif HSU:
 
 # When the number after #if & #elif set as 0, it will be switch to I2C Mode
 elif I2C:
-    PN532_I2C = Pn532I2c(1)
+    PN532_I2C = Pn532I2c(Pn532I2c.RPI_BUS1)
     nfc = Pn532(PN532_I2C)
 
-# We can encode many different kinds of pointers to the card,
-# from a URL, to an Email address, to a phone number, and many more
-# check the library header .h file to see the large # of supported
-# prefixes!
 
-# For a http:#www. url:
-url = "google.com"
-ndefprefix = pn532.NDEF_URIPREFIX_HTTP_WWWDOT
+NR_SHORTSECTOR          = 32    # Number of short sectors on Mifare 1K/4K
+NR_LONGSECTOR           = 8     # Number of long sectors on Mifare 4K
+NR_BLOCK_OF_SHORTSECTOR = 4     # Number of blocks in a short sector
+NR_BLOCK_OF_LONGSECTOR  = 16    # Number of blocks in a long sector
 
-# for an email address
-# url = "mail@example.com"
-# ndefprefix = NDEF_URIPREFIX_MAILTO
+# Determine the sector trailer block based on sector number
+def BLOCK_NUMBER_OF_SECTOR_TRAILER(sector):
+  return (sector)*NR_BLOCK_OF_SHORTSECTOR + NR_BLOCK_OF_SHORTSECTOR-1 if sector < NR_SHORTSECTOR else \
+    NR_SHORTSECTOR*NR_BLOCK_OF_SHORTSECTOR + (sector-NR_SHORTSECTOR)*NR_BLOCK_OF_LONGSECTOR + NR_BLOCK_OF_LONGSECTOR-1
 
-# for a phone number
-# url = "+1 212 555 1212"
-# ndefprefix = NDEF_URIPREFIX_TEL
+# Determine the sector's first block based on the sector number
+def BLOCK_NUMBER_OF_SECTOR_1ST_BLOCK(sector):
+  (sector) * NR_BLOCK_OF_SHORTSECTOR if sector < NR_SHORTSECTOR else \
+    NR_SHORTSECTOR * NR_BLOCK_OF_SHORTSECTOR + (sector - NR_SHORTSECTOR) * NR_BLOCK_OF_LONGSECTOR
 
+
+# The default Mifare Classic key
+KEY_DEFAULT_KEYAB = bytearray([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF])
 
 def setup():
   print("-------Looking for PN532--------")
@@ -69,60 +66,79 @@ def setup():
 
   # configure board to read RFID tags
   nfc.SAMConfig()
-
+  
 def loop():
   authenticated = False               # Flag to indicate if the sector is authenticated
-
-  # Use the default key
-  keya = bytearray([ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF ])
-
-  print("")
-  print("PLEASE NOTE: Formatting your card for NDEF records will change the")
-  print("authentication keys.  To reformat your NDEF tag as a clean Mifare")
-  print("Classic tag, use the mifareclassic_ndeftoclassic example!")
-  print("")
-  print("Place your Mifare Classic card on the reader to format with NDEF")
-  print("and press any key to continue ...")
+  blankAccessBits = bytearray([0xff, 0x07, 0x80 ])
+  numOfSector = 16                 # Assume Mifare Classic 1K for now (16 4-block sectors)
+  
+  print("Place your NDEF formatted Mifare Classic 1K card on the reader")
   # Wait for user input before proceeding
-  input('Press a key to continue')
-
+  input("and press any key to continue ...")
+  
+    
   # Wait for an ISO14443A type card (Mifare, etc.).  When one is found
   # 'uid' will be populated with the UID, and uidLength will indicate
   # if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
-  success, uid = nfc.readPassiveTargetID(cardbaudrate=pn532.PN532_MIFARE_ISO14443A_106KBPS)
+  success, uid = nfc.readPassiveTargetID(pn532.PN532_MIFARE_ISO14443A_106KBPS)
 
-  if (success):
-    # Display some basic information about the card
+  if (success): 
+    # We seem to have a tag ...
+    # Display some basic information about it
     print("Found an ISO14443A card")
     print("UID Length: {:d}".format(len(uid)))
     print("UID Value: {}".format(binascii.hexlify(uid)))
 
+    
     # Make sure this is a Mifare Classic card
     if (len(uid) != 4):
-      print("Ooops ... this doesn't seem to be a Mifare Classic card!")
+      print("Ooops ... this doesn't seem to be a Mifare Classic card!") 
       return
-
-    # We probably have a Mifare Classic card ...
+    
     print("Seems to be a Mifare Classic card (4 byte UID)")
+    print("")
+    print("Reformatting card for Mifare Classic (please don't touch it!) ... ")
 
-    # Create an NDEF message with a Text record in English ("en")
-    
-    # Create a Text record
-    text_payload = 'hello world'
-    text_record = (ndef.TNF_WELL_KNOWN, ndef.RTD_TEXT, 'en', text_payload)
-    
-    # Create an NDEF message
-    ndef_message = ndef.message_encoder([text_record])
-    
+    # Now run through the card sector by sector
+    for idx in range(numOfSector):
+      # Step 1: Authenticate the current sector using key B 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF
+      success = nfc.mifareclassic_AuthenticateBlock (uid, BLOCK_NUMBER_OF_SECTOR_TRAILER(idx), 1, KEY_DEFAULT_KEYAB)
+      if (not success):
+        print("Authentication failed for sector {}".format(numOfSector))
+        return
+      
+      # Step 2: Write to the other blocks
+      blockBuffer = bytearray('\x00'*16)
+      if (idx == 16):
+        if (not (nfc.mifareclassic_WriteDataBlock((BLOCK_NUMBER_OF_SECTOR_TRAILER(idx)) - 3, blockBuffer))):
+          print("Unable to write to sector {}".format(numOfSector))
+          return
+      if ((idx == 0) or (idx == 16)):
+        if (not (nfc.mifareclassic_WriteDataBlock((BLOCK_NUMBER_OF_SECTOR_TRAILER(idx)) - 2, blockBuffer))):
+          print("Unable to write to sector {}".format(numOfSector))
+          return
+      else:
+        if (not (nfc.mifareclassic_WriteDataBlock((BLOCK_NUMBER_OF_SECTOR_TRAILER(idx)) - 3, blockBuffer))):
+          print("Unable to write to sector {}".format(numOfSector))
+          return
+        if (not (nfc.mifareclassic_WriteDataBlock((BLOCK_NUMBER_OF_SECTOR_TRAILER(idx)) - 2, blockBuffer))):
+          print("Unable to write to sector {}".format(numOfSector))
+          return
 
-    # Write the NDEF message to the NFC tag
-    success = nfc.writeNDEF(ndef_message)
+      blockBuffer = bytearray('\x00' * 16)
+      if (not(nfc.mifareclassic_WriteDataBlock((BLOCK_NUMBER_OF_SECTOR_TRAILER(idx)) - 1, blockBuffer))):
+        print("Unable to write to sector {}".format(numOfSector))
+        return
+      
+      # Step 3: Reset both keys to 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF
+      blockBuffer = KEY_DEFAULT_KEYAB + blankAccessBits + b'\x69' + KEY_DEFAULT_KEYAB
 
-    if success:
-        print("NDEF message written to the NFC tag successfully.")
-    else:
-        print("Failed to write NDEF message to the NFC tag.")
-
+      # Step 4: Write the trailer block
+      if (not (nfc.mifareclassic_WriteDataBlock((BLOCK_NUMBER_OF_SECTOR_TRAILER(idx)), blockBuffer))):
+        print("Unable to write trailer block of sector ")
+        print(numOfSector)
+        return
+  
   # Wait a bit before trying again
   print("\n\nDone!")
   time.sleep(1)
