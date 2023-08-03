@@ -76,7 +76,7 @@ def loop():
 
         # Make sure this is a Mifare Classic card
         if (len(uid) != 4):
-        print("Ooops ... this doesn't seem to be a Mifare Classic card!")
+            print("Ooops ... this doesn't seem to be a Mifare Classic card!")
         return
 
         # We probably have a Mifare Classic card ...

@@ -93,7 +93,7 @@ def loop():
 
                 #  If you want to write something to block 4 to test with, uncomment
                 #  the following line and this text should be read back in a minute
-                # data = bytearray([ 'a', 'd', 'a', 'f', 'r', 'u', 'i', 't', '.', 'c', 'o', 'm', 0, 0, 0, 0])
+                data = bytes('adafruit.com', 'ascii') + bytes(4)
                 # success = nfc.mifareclassic_WriteDataBlock (4, data)
 
                 #  Try to read the contents of block 4
